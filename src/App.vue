@@ -1,5 +1,6 @@
 <script setup>
 import NavHeader from './components/NavHeader.vue'
+import PageFooter from './components/PageFooter.vue'
 </script>
 
 <template>
@@ -11,6 +12,10 @@ import NavHeader from './components/NavHeader.vue'
     <main class="main-box">
       <router-view></router-view>
     </main>
+
+    <footer>
+      <PageFooter />
+    </footer>
   </div>
 </template>
 
