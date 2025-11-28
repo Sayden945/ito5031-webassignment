@@ -5,17 +5,13 @@ import PageFooter from './components/PageFooter.vue'
 
 <template>
   <div class="main-container">
-    <header>
-      <NavHeader />
-    </header>
+    <NavHeader />
 
     <main class="main-box">
       <router-view></router-view>
     </main>
 
-    <footer>
-      <PageFooter />
-    </footer>
+    <PageFooter />
   </div>
 </template>
 

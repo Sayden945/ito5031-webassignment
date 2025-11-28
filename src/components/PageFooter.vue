@@ -1,5 +1,5 @@
 <template>
-  <footer class="bg-dark text-light py-5 mt-5">
+  <footer class="bg-dark text-light">
     <div class="container">
       <div class="row">
         <!-- Sitemap Section -->
@@ -16,14 +16,9 @@
                     >About</router-link
                   >
                 </li>
-                <li>
-                  <router-link to="/services" class="text-light text-decoration-none"
-                    >Services</router-link
-                  >
-                </li>
               </ul>
             </div>
-            <div class="col-6">
+            <!-- <div class="col-6">
               <ul class="list-unstyled">
                 <li>
                   <router-link to="/contact" class="text-light text-decoration-none"
@@ -31,15 +26,12 @@
                   >
                 </li>
                 <li>
-                  <router-link to="/blog" class="text-light text-decoration-none">Blog</router-link>
-                </li>
-                <li>
-                  <router-link to="/privacy" class="text-light text-decoration-none"
+                  <router-link to="/Privacy" class="text-light text-decoration-none"
                     >Privacy Policy</router-link
                   >
                 </li>
               </ul>
-            </div>
+            </div> -->
           </div>
         </div>
 
