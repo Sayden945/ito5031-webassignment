@@ -13,6 +13,9 @@
             >Resources</router-link
           >
         </li>
+        <li class="nav-item">
+          <router-link to="/donate" class="nav-link" active-class="active">Donate</router-link>
+        </li>
         <div class="col mg-1 justify-content-end">
           <li class="nav-item">
             <router-link to="/account" class="nav-link" active-class="active">Account</router-link>
