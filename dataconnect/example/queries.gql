@@ -1,0 +1,37 @@
+mutation CreateUser @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  user_insert(data: {
+    email: "example@example.com",
+    password: "securepassword"
+  })
+}
+
+query ListCharities @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  charities {
+    id
+    name
+    description
+    logoUrl
+    websiteUrl
+  }
+}
+
+mutation RegisterForEvent($eventId: UUID!) @auth(level: USER, insecureReason: "This operation is safe to expose to all logged in users.") {
+  registration_insert(data: {
+    eventId: $eventId,
+    userId_expr: "auth.uid",
+    status: "registered",
+    registrationDate_expr: "request.time"
+  })
+}
+
+query ListMyDonations @auth(level: USER) {
+  donations(where: {userId: {eq_expr: "auth.uid"}}) {
+    id
+    amount
+    currency
+    donationDate
+    charity {
+      name
+    }
+  }
+}

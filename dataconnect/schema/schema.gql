@@ -1,0 +1,55 @@
+type User @table {
+  email: String!
+  password: String!
+  createdAt: Timestamp!
+  displayName: String
+  photoUrl: String
+  phoneNumber: String
+}
+
+type Charity @table {
+  name: String!
+  createdAt: Timestamp!
+  description: String
+  websiteUrl: String
+  logoUrl: String
+}
+
+type Donation @table {
+  user: User!
+  charity: Charity!
+  amount: Float!
+  donationDate: Date!
+  createdAt: Timestamp!
+  isAnonymous: Boolean
+  currency: String
+}
+
+type Event @table {
+  charity: Charity!
+  title: String!
+  description: String!
+  eventDate: Timestamp!
+  location: String!
+  createdAt: Timestamp!
+  capacity: Int
+  imageUrl: String
+}
+
+type Registration @table(key: ["user", "event"]) {
+  user: User!
+  event: Event!
+  registrationDate: Timestamp!
+  status: String!
+  createdAt: Timestamp!
+}
+
+type Article @table {
+  charity: Charity!
+  title: String!
+  content: String!
+  publishedDate: Date!
+  createdAt: Timestamp!
+  imageUrl: String
+  tags: [String]
+}

@@ -5,6 +5,7 @@
 
     <div>
       <AccountDash />
+      <AccountCalendar />
     </div>
   </div>
 </template>
@@ -12,8 +13,9 @@
 <script setup>
 import { getAuth, signOut } from 'firebase/auth'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/userStore'
+import { useUserStore } from '../stores/userStore'
 import AccountDash from '@/components/AccountDash.vue'
+import AccountCalendar from '@/components/AccountCalendar.vue'
 
 const userStore = useUserStore()
 const router = useRouter()

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import { collection, doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { ref, computed } from 'vue'
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/firebase'
 
 export const useUserStore = defineStore('user', () => {
@@ -9,6 +9,11 @@ export const useUserStore = defineStore('user', () => {
   const isAuthenticated = ref(false)
   const loading = ref(false)
   const error = ref(null)
+
+  // Role-based computed properties
+  const isAdmin = computed(() => userProfile.value?.role === 'admin')
+  const isVolunteer = computed(() => userProfile.value?.role === 'volunteer')
+  const userRole = computed(() => userProfile.value?.role || 'user')
 
   const login = async (firebaseUser) => {
     try {
@@ -58,6 +63,7 @@ export const useUserStore = defineStore('user', () => {
       const userData = {
         email: user.value?.email,
         displayName: user.value?.displayName,
+        role: 'user',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         ...additionalData,
@@ -96,17 +102,29 @@ export const useUserStore = defineStore('user', () => {
     error.value = null
   }
 
+  const refreshUserProfile = async () => {
+    if (!user.value) {
+      console.warn('No user to refresh profile for')
+      return
+    }
+    await fetchUserProfile(user.value.uid)
+  }
+
   return {
     user,
     userProfile,
     isAuthenticated,
     loading,
     error,
+    isAdmin,
+    isVolunteer,
+    userRole,
     login,
     logout,
     fetchUserProfile,
     createUserProfile,
     updateUserProfile,
     clearError,
+    refreshUserProfile,
   }
 })

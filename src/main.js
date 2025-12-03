@@ -2,6 +2,10 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { initializeApp } from 'firebase/app'
 import { getFirestore } from 'firebase/firestore'
+import { getAuth } from 'firebase/auth'
+import '@/firebase'
+
+import '@/firebase/seedData'
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
 
@@ -27,3 +31,4 @@ app.use(router)
 
 app.mount('#app')
 export const db = getFirestore(app)
+export const auth = getAuth(app)

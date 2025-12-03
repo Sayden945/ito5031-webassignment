@@ -1,0 +1,116 @@
+mutation CreateSeedData @transaction @auth(level: PUBLIC, insecureReason: "This operation is for seeding data and is safe to expose to the public.") {
+  charity_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      name: "Example Charity 1",
+      description: "This is an example charity.",
+      websiteUrl: "http://example.com",
+      logoUrl: "http://example.com/logo.png",
+      createdAt: "2024-04-03T00:00:00Z"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      name: "Example Charity 2",
+      description: "Another example charity.",
+      websiteUrl: "http://example2.com",
+      logoUrl: "http://example2.com/logo.png",
+      createdAt: "2024-04-03T00:00:00Z"
+    }
+  ])
+  user_insertMany(data: [
+    {
+      id: "650e8400-e29b-41d4-a716-446655440000",
+      email: "user1@example.com",
+      password: "password",
+      createdAt: "2024-04-03T00:00:00Z"
+    },
+    {
+      id: "650e8400-e29b-41d4-a716-446655440001",
+      email: "user2@example.com",
+      password: "password",
+      createdAt: "2024-04-03T00:00:00Z"
+    }
+  ])
+  event_insertMany(data: [
+    {
+      id: "750e8400-e29b-41d4-a716-446655440000",
+      charityId: "550e8400-e29b-41d4-a716-446655440000",
+      title: "Example Event 1",
+      description: "This is an example event.",
+      location: "Example Location",
+      imageUrl: "http://example.com/event1.png",
+      eventDate: "2024-04-10T10:00:00Z",
+      capacity: 100,
+      createdAt: "2024-04-03T00:00:00Z"
+    },
+    {
+      id: "750e8400-e29b-41d4-a716-446655440001",
+      charityId: "550e8400-e29b-41d4-a716-446655440001",
+      title: "Example Event 2",
+      description: "Another example event.",
+      location: "Another Example Location",
+      imageUrl: "http://example2.com/event2.png",
+      eventDate: "2024-04-12T14:00:00Z",
+      capacity: 50,
+      createdAt: "2024-04-03T00:00:00Z"
+    }
+  ])
+ donation_insertMany(data: [
+    {
+      id: "850e8400-e29b-41d4-a716-446655440000",
+      charityId: "550e8400-e29b-41d4-a716-446655440000",
+      userId: "650e8400-e29b-41d4-a716-446655440000",
+      amount: 25.00,
+      currency: "USD",
+      donationDate: "2024-04-05",
+      isAnonymous: false,
+      createdAt: "2024-04-03T00:00:00Z"
+    },
+    {
+      id: "850e8400-e29b-41d4-a716-446655440001",
+      charityId: "550e8400-e29b-41d4-a716-446655440001",
+      userId: "650e8400-e29b-41d4-a716-446655440001",
+      amount: 50.00,
+      currency: "USD",
+      donationDate: "2024-04-06",
+      isAnonymous: true,
+      createdAt: "2024-04-03T00:00:00Z"
+    }
+  ])
+  registration_insertMany(data: [
+    {
+      userId: "650e8400-e29b-41d4-a716-446655440000",
+      eventId: "750e8400-e29b-41d4-a716-446655440000",
+      status: "Registered",
+      registrationDate: "2024-04-04T00:00:00Z",
+      createdAt: "2024-04-03T00:00:00Z"
+    },
+    {
+      userId: "650e8400-e29b-41d4-a716-446655440001",
+      eventId: "750e8400-e29b-41d4-a716-446655440001",
+      status: "Registered",
+      registrationDate: "2024-04-05T00:00:00Z",
+      createdAt: "2024-04-03T00:00:00Z"
+    }
+  ])
+ article_insertMany(data: [
+    {
+      id: "950e8400-e29b-41d4-a716-446655440000",
+      charityId: "550e8400-e29b-41d4-a716-446655440000",
+      title: "Example Article 1",
+      content: "This is an example article content.",
+      imageUrl: "http://example.com/article1.png",
+      publishedDate: "2024-04-07",
+      createdAt: "2024-04-03T00:00:00Z"
+    },
+    {
+      id: "950e8400-e29b-41d4-a716-446655440001",
+      charityId: "550e8400-e29b-41d4-a716-446655440001",
+      title: "Example Article 2",
+      content: "Another example article content.",
+      imageUrl: "http://example2.com/article2.png",
+      publishedDate: "2024-04-08",
+      createdAt: "2024-04-03T00:00:00Z"
+    }
+  ])
+}
