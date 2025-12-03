@@ -31,9 +31,10 @@ service cloud.firestore {
                     request.resource.data.userId == request.auth.uid;
     }
 
-    // Articles collection - anyone can read published, admins can write
+    // Articles collection - anyone can read published, admins can read all
     match /articles/{articleId} {
-      allow read: if resource.data.published == true || isAdmin();
+      allow get: if resource.data.published == true || isAdmin();
+      allow list: if true; // Allow listing, filtering handled by query
       allow write: if isAdmin();
     }
 

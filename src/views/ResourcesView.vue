@@ -157,7 +157,7 @@ const filteredArticles = computed(() => {
 // Format date for display
 const formatDate = (date) => {
   if (!date) return ''
-  return new Date(date).toLocaleDateString('en-US', {
+  return new Date(date).toLocaleDateString('en-AU', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
