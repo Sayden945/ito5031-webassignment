@@ -7,9 +7,6 @@ import {
   updateDoc,
   deleteDoc,
   doc,
-  orderBy,
-  query,
-  where,
   serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/firebase'
@@ -40,19 +37,17 @@ export const useResourcesStore = defineStore('resources', () => {
     error.value = null
 
     try {
-      const q = query(
-        collection(db, 'articles'),
-        where('published', '==', true),
-        orderBy('createdAt', 'desc'),
-      )
-      const querySnapshot = await getDocs(q)
+      const querySnapshot = await getDocs(collection(db, 'articles'))
 
-      articles.value = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate(),
-      }))
+      articles.value = querySnapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate?.() || new Date(doc.data().createdAt),
+          updatedAt: doc.data().updatedAt?.toDate?.() || new Date(doc.data().updatedAt),
+        }))
+        .filter((article) => article.published)
+        .sort((a, b) => b.createdAt - a.createdAt)
     } catch (err) {
       error.value = `Failed to fetch articles: ${err.message}`
       console.error('Error fetching articles:', err)
@@ -66,15 +61,16 @@ export const useResourcesStore = defineStore('resources', () => {
     error.value = null
 
     try {
-      const q = query(collection(db, 'articles'), orderBy('createdAt', 'desc'))
-      const querySnapshot = await getDocs(q)
+      const querySnapshot = await getDocs(collection(db, 'articles'))
 
-      articles.value = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate(),
-      }))
+      articles.value = querySnapshot.docs
+        .map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate?.() || new Date(doc.data().createdAt),
+          updatedAt: doc.data().updatedAt?.toDate?.() || new Date(doc.data().updatedAt),
+        }))
+        .sort((a, b) => b.createdAt - a.createdAt)
     } catch (err) {
       error.value = `Failed to fetch articles: ${err.message}`
       console.error('Error fetching all articles:', err)
