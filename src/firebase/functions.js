@@ -4,7 +4,7 @@
  */
 
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions'
-import { app } from '@/firebase'
+import app from '@/firebase/index.js'
 
 const functions = getFunctions(app)
 
@@ -60,5 +60,69 @@ export const processDonation = async (amount, message = '') => {
   } catch (error) {
     console.error('Cloud Function error:', error)
     throw new Error(error.message || 'Failed to process donation')
+  }
+}
+
+/**
+ * Send bulk email (Admin only)
+ * @param {Object} data - Email data
+ * @param {string[]} data.recipients - Array of email addresses
+ * @param {string} data.subject - Email subject
+ * @param {string} data.message - Email message
+ * @returns {Promise} Send result
+ */
+export const sendBulkEmailFunction = async ({ recipients, subject, message }) => {
+  const sendBulkEmail = httpsCallable(functions, 'sendBulkEmail')
+  try {
+    const result = await sendBulkEmail({ recipients, subject, message })
+    return result.data
+  } catch (error) {
+    console.error('Cloud Function error:', error)
+    throw new Error(error.message || 'Failed to send bulk email')
+  }
+}
+
+/**
+ * Send booking summary email to user
+ * @returns {Promise} Send result
+ */
+export const sendBookingSummaryEmail = async () => {
+  const sendSummary = httpsCallable(functions, 'sendBookingSummary')
+  try {
+    const result = await sendSummary()
+    return result.data
+  } catch (error) {
+    console.error('Cloud Function error:', error)
+    throw new Error(error.message || 'Failed to send booking summary')
+  }
+}
+
+/**
+ * Send donation summary email to user
+ * @returns {Promise} Send result
+ */
+export const sendDonationSummaryEmail = async () => {
+  const sendSummary = httpsCallable(functions, 'sendDonationSummary')
+  try {
+    const result = await sendSummary()
+    return result.data
+  } catch (error) {
+    console.error('Cloud Function error:', error)
+    throw new Error(error.message || 'Failed to send donation summary')
+  }
+}
+
+/**
+ * Send upcoming events email to user
+ * @returns {Promise} Send result
+ */
+export const sendUpcomingEventsEmail = async () => {
+  const sendEvents = httpsCallable(functions, 'sendUpcomingEvents')
+  try {
+    const result = await sendEvents()
+    return result.data
+  } catch (error) {
+    console.error('Cloud Function error:', error)
+    throw new Error(error.message || 'Failed to send upcoming events')
   }
 }

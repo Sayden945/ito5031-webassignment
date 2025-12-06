@@ -104,6 +104,17 @@
               Bookings
             </a>
           </li>
+          <li v-if="userStore.isAdmin" class="nav-item">
+            <a
+              class="nav-link"
+              :class="{ active: activeTab === 'email' }"
+              @click="activeTab = 'email'"
+              role="button"
+            >
+              <i class="bi bi-envelope me-1"></i>
+              Bulk Email
+            </a>
+          </li>
         </ul>
       </div>
       <div class="card-body">
@@ -620,6 +631,116 @@
             </table>
           </div>
         </div>
+
+        <!-- Bulk Email Management -->
+        <div v-if="activeTab === 'email' && userStore.isAdmin">
+          <h5 class="mb-3">Send Bulk Email</h5>
+
+          <!-- Success/Error Messages -->
+          <div v-if="emailSuccess" class="alert alert-success alert-dismissible fade show">
+            <i class="bi bi-check-circle me-2"></i>
+            {{ emailSuccess }}
+            <button type="button" class="btn-close" @click="emailSuccess = ''"></button>
+          </div>
+          <div v-if="emailError" class="alert alert-danger alert-dismissible fade show">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            {{ emailError }}
+            <button type="button" class="btn-close" @click="emailError = ''"></button>
+          </div>
+
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <h6>Select Recipients</h6>
+              <div class="card">
+                <div class="card-body">
+                  <div class="form-check mb-2">
+                    <input
+                      class="form-check-input"
+                      type="checkbox"
+                      id="selectAll"
+                      v-model="selectAllUsers"
+                      @change="toggleSelectAll"
+                    />
+                    <label class="form-check-label fw-bold" for="selectAll">
+                      Select All Users ({{ userStore.allUsers.length }})
+                    </label>
+                  </div>
+                  <hr />
+                  <div class="overflow-auto" style="max-height: 400px">
+                    <div v-for="user in userStore.allUsers" :key="user.id" class="form-check mb-2">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        :id="'user-' + user.id"
+                        :value="user.email"
+                        v-model="selectedRecipients"
+                      />
+                      <label class="form-check-label" :for="'user-' + user.id">
+                        {{ user.firstName }} {{ user.lastName }}
+                        <small class="text-muted d-block">{{ user.email }}</small>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="mt-3">
+                    <strong>Selected: {{ selectedRecipients.length }}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-8">
+              <h6>Compose Message</h6>
+              <form @submit.prevent="sendBulkEmail">
+                <div class="mb-3">
+                  <label for="emailSubject" class="form-label">Subject *</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="emailSubject"
+                    v-model="bulkEmail.subject"
+                    required
+                    maxlength="200"
+                    placeholder="Enter email subject"
+                  />
+                </div>
+
+                <div class="mb-3">
+                  <label for="emailMessage" class="form-label">Message *</label>
+                  <textarea
+                    class="form-control"
+                    id="emailMessage"
+                    v-model="bulkEmail.message"
+                    required
+                    rows="12"
+                    maxlength="5000"
+                    placeholder="Enter your message here..."
+                  ></textarea>
+                  <div class="form-text">{{ bulkEmail.message.length }}/5000 characters</div>
+                </div>
+
+                <div class="d-flex gap-2">
+                  <button
+                    type="submit"
+                    class="btn btn-primary"
+                    :disabled="selectedRecipients.length === 0 || sendingEmail"
+                  >
+                    <span v-if="sendingEmail">
+                      <span class="spinner-border spinner-border-sm me-2"></span>
+                      Sending...
+                    </span>
+                    <span v-else>
+                      <i class="bi bi-send me-2"></i>
+                      Send to {{ selectedRecipients.length }} recipient(s)
+                    </span>
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary" @click="resetEmailForm">
+                    Reset
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -631,6 +752,7 @@ import { useUserStore } from '@/stores/userStore'
 import { useResourcesStore } from '@/stores/resourcesStore'
 import { useBookingStore } from '@/stores/bookingStore'
 import { useDonationStore } from '@/stores/donationStore'
+import { sendBulkEmailFunction } from '@/firebase/functions'
 
 const userStore = useUserStore()
 const resourcesStore = useResourcesStore()
@@ -648,6 +770,17 @@ const editingEvent = ref(null)
 const editEventDate = ref('')
 const editEventStartTime = ref('')
 const editEventEndTime = ref('')
+
+// Bulk email state
+const selectedRecipients = ref([])
+const selectAllUsers = ref(false)
+const bulkEmail = ref({
+  subject: '',
+  message: '',
+})
+const sendingEmail = ref(false)
+const emailSuccess = ref('')
+const emailError = ref('')
 
 const newArticle = ref({
   title: '',
@@ -922,6 +1055,71 @@ const formatDate = (date) => {
     month: 'short',
     day: 'numeric',
   })
+}
+
+// Bulk email functions
+const toggleSelectAll = () => {
+  if (selectAllUsers.value) {
+    selectedRecipients.value = userStore.allUsers.map((u) => u.email).filter(Boolean)
+  } else {
+    selectedRecipients.value = []
+  }
+}
+
+const resetEmailForm = () => {
+  bulkEmail.value = {
+    subject: '',
+    message: '',
+  }
+  selectedRecipients.value = []
+  selectAllUsers.value = false
+  emailSuccess.value = ''
+  emailError.value = ''
+}
+
+const sendBulkEmail = async () => {
+  if (selectedRecipients.value.length === 0) {
+    emailError.value = 'Please select at least one recipient'
+    return
+  }
+
+  if (!bulkEmail.value.subject.trim() || !bulkEmail.value.message.trim()) {
+    emailError.value = 'Subject and message are required'
+    return
+  }
+
+  if (!confirm(`Send email to ${selectedRecipients.value.length} recipient(s)?`)) {
+    return
+  }
+
+  sendingEmail.value = true
+  emailError.value = ''
+  emailSuccess.value = ''
+
+  try {
+    const result = await sendBulkEmailFunction({
+      recipients: selectedRecipients.value,
+      subject: bulkEmail.value.subject,
+      message: bulkEmail.value.message,
+    })
+
+    if (result.sent > 0) {
+      emailSuccess.value = `Successfully sent ${result.sent} email(s)`
+      if (result.failed > 0) {
+        emailSuccess.value += ` (${result.failed} failed)`
+      }
+      // Reset form on success
+      setTimeout(() => {
+        resetEmailForm()
+      }, 3000)
+    } else {
+      emailError.value = 'Failed to send any emails. Please check your SendGrid configuration.'
+    }
+  } catch (error) {
+    emailError.value = error.message || 'Failed to send bulk email'
+  } finally {
+    sendingEmail.value = false
+  }
 }
 
 onMounted(async () => {

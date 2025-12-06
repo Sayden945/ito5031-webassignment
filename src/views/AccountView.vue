@@ -122,14 +122,43 @@
         </ul>
 
         <!-- Export PDF Button -->
-        <button
-          class="btn btn-gradient shadow-sm px-4 py-2"
-          @click="exportToPDF"
-          :disabled="!canExport"
-        >
-          <i class="bi bi-file-earmark-pdf-fill me-2"></i>
-          <span>Export PDF</span>
-        </button>
+        <div class="d-flex gap-2">
+          <div class="dropdown">
+            <button
+              class="btn btn-success shadow-sm px-4 py-2 dropdown-toggle"
+              type="button"
+              data-bs-toggle="dropdown"
+            >
+              <i class="bi bi-envelope me-2"></i>
+              <span>Email Reports</span>
+            </button>
+            <ul class="dropdown-menu">
+              <li>
+                <a class="dropdown-item" href="#" @click.prevent="sendBookingSummary">
+                  <i class="bi bi-calendar-check me-2"></i>Booking Summary
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="#" @click.prevent="sendDonationSummary">
+                  <i class="bi bi-currency-dollar me-2"></i>Donation Summary
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item" href="#" @click.prevent="sendUpcomingEvents">
+                  <i class="bi bi-calendar-event me-2"></i>Upcoming Events
+                </a>
+              </li>
+            </ul>
+          </div>
+          <button
+            class="btn btn-gradient shadow-sm px-4 py-2"
+            @click="exportToPDF"
+            :disabled="!canExport"
+          >
+            <i class="bi bi-file-earmark-pdf-fill me-2"></i>
+            <span>Export PDF</span>
+          </button>
+        </div>
       </div>
 
       <!-- Tab Content -->
@@ -166,6 +195,11 @@ import { useBookingStore } from '../stores/bookingStore'
 import AccountCalendar from '@/components/AccountCalendar.vue'
 import DonationHistory from '@/components/DonationHistory.vue'
 import BookingHistory from '@/components/BookingHistory.vue'
+import {
+  sendBookingSummaryEmail,
+  sendDonationSummaryEmail,
+  sendUpcomingEventsEmail,
+} from '@/firebase/functions'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
@@ -334,6 +368,34 @@ const handleSignOut = async () => {
     router.push({ name: 'home' })
   } catch (error) {
     console.error('Error signing out:', error)
+  }
+}
+
+// Email summary functions
+const sendBookingSummary = async () => {
+  try {
+    const result = await sendBookingSummaryEmail()
+    alert(result.message || 'Booking summary sent to your email!')
+  } catch (error) {
+    alert('Failed to send booking summary: ' + error.message)
+  }
+}
+
+const sendDonationSummary = async () => {
+  try {
+    const result = await sendDonationSummaryEmail()
+    alert(result.message || 'Donation summary sent to your email!')
+  } catch (error) {
+    alert('Failed to send donation summary: ' + error.message)
+  }
+}
+
+const sendUpcomingEvents = async () => {
+  try {
+    const result = await sendUpcomingEventsEmail()
+    alert(result.message || 'Upcoming events sent to your email!')
+  } catch (error) {
+    alert('Failed to send upcoming events: ' + error.message)
   }
 }
 </script>

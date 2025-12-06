@@ -7,8 +7,14 @@
 const { setGlobalOptions } = require('firebase-functions/v2')
 const { onCall, HttpsError } = require('firebase-functions/v2/https')
 const { onSchedule } = require('firebase-functions/v2/scheduler')
+const { defineSecret } = require('firebase-functions/params')
 const admin = require('firebase-admin')
 const logger = require('firebase-functions/logger')
+const sgMail = require('@sendgrid/mail')
+
+// Define secrets
+const sendgridApiKey = defineSecret('SENDGRID_API_KEY')
+const sendgridFromEmail = defineSecret('SENDGRID_FROM_EMAIL')
 
 // Initialize Firebase Admin
 admin.initializeApp()
@@ -272,3 +278,534 @@ exports.cleanupPastEvents = onSchedule('0 2 * * *', async () => {
     throw error
   }
 })
+
+/**
+ * Helper: Format date for email display
+ */
+function formatDateForEmail(timestamp) {
+  if (!timestamp) return 'N/A'
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+  return date.toLocaleDateString('en-AU', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+/**
+ * Helper: Send email via SendGrid
+ */
+async function sendEmail({ to, subject, html, apiKey, fromEmail }) {
+  if (!apiKey) {
+    throw new Error('SendGrid not configured')
+  }
+
+  sgMail.setApiKey(apiKey)
+
+  const msg = {
+    to,
+    from: fromEmail || 'noreply@example.com',
+    subject,
+    html,
+  }
+
+  try {
+    await sgMail.send(msg)
+    logger.info('Email sent', { to, subject })
+  } catch (error) {
+    logger.error('Email send error', { to, subject, error: error.message })
+    throw error
+  }
+}
+
+/**
+ * Cloud Function: Send Bulk Email (Admin Only)
+ * Allows admins to send emails to multiple users
+ */
+exports.sendBulkEmail = onCall(
+  { secrets: [sendgridApiKey, sendgridFromEmail] },
+  async (request) => {
+    const { recipients, subject, message } = request.data
+    const userId = request.auth?.uid
+
+    if (!userId) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated')
+    }
+
+    const db = admin.firestore()
+
+    // Verify admin role
+    const userDoc = await db.collection('users').doc(userId).get()
+    if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
+      throw new HttpsError('permission-denied', 'Admin access required')
+    }
+
+    if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
+      throw new HttpsError('invalid-argument', 'Recipients array required')
+    }
+
+    if (recipients.length > 100) {
+      throw new HttpsError('invalid-argument', 'Maximum 100 recipients allowed')
+    }
+
+    if (!subject || !message) {
+      throw new HttpsError('invalid-argument', 'Subject and message required')
+    }
+
+    const sanitizedSubject = sanitizeInput(subject, 200)
+    const sanitizedMessage = sanitizeInput(message, 5000)
+
+    const emailHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #198754; color: white; padding: 20px; text-align: center; }
+          .content { padding: 20px; background-color: #f8f9fa; }
+          .footer { text-align: center; padding: 20px; font-size: 12px; color: #6c757d; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>ITO5032 Web - Community Update</h2>
+          </div>
+          <div class="content">
+            ${sanitizedMessage.replace(/\n/g, '<br>')}
+          </div>
+          <div class="footer">
+            <p>This is an automated message from ITO5032 Web Application</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `
+
+    const results = { sent: 0, failed: 0, errors: [] }
+
+    for (const email of recipients) {
+      try {
+        await sendEmail({
+          to: email,
+          subject: sanitizedSubject,
+          html: emailHtml,
+          apiKey: sendgridApiKey.value(),
+          fromEmail: sendgridFromEmail.value(),
+        })
+        results.sent++
+      } catch (error) {
+        results.failed++
+        results.errors.push({ email, error: error.message })
+      }
+    }
+
+    logger.info('Bulk email completed', { userId, sent: results.sent, failed: results.failed })
+
+    return {
+      success: true,
+      sent: results.sent,
+      failed: results.failed,
+      errors: results.errors,
+    }
+  },
+)
+
+/**
+ * Cloud Function: Send Booking Summary Email
+ * Sends user their booking history
+ */
+exports.sendBookingSummary = onCall(
+  { secrets: [sendgridApiKey, sendgridFromEmail] },
+  async (request) => {
+    const userId = request.auth?.uid
+
+    if (!userId) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated')
+    }
+
+    const db = admin.firestore()
+
+    try {
+      const userDoc = await db.collection('users').doc(userId).get()
+      const userEmail = request.auth.token.email
+      const userName = userDoc.data()?.displayName || request.auth.token.name || 'User'
+
+      if (!userEmail) {
+        throw new HttpsError('failed-precondition', 'User email not found')
+      }
+
+      // Get all bookings for user
+      const bookingsSnapshot = await db
+        .collection('bookings')
+        .where('userId', '==', userId)
+        .orderBy('createdAt', 'desc')
+        .limit(50)
+        .get()
+
+      const bookings = bookingsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+
+      let bookingsHtml = '<p>No bookings found.</p>'
+
+      if (bookings.length > 0) {
+        const confirmedBookings = bookings.filter((b) => b.status === 'confirmed')
+        const cancelledBookings = bookings.filter((b) => b.status === 'cancelled')
+
+        bookingsHtml = `
+        <h3>Confirmed Bookings (${confirmedBookings.length})</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="background-color: #e9ecef;">
+            <th style="padding: 10px; text-align: left;">Event</th>
+            <th style="padding: 10px; text-align: left;">Date</th>
+            <th style="padding: 10px; text-align: left;">Status</th>
+          </tr>
+          ${confirmedBookings
+            .map(
+              (b) => `
+            <tr style="border-bottom: 1px solid #dee2e6;">
+              <td style="padding: 10px;">${b.eventTitle}</td>
+              <td style="padding: 10px;">${formatDateForEmail(b.eventStartTime)}</td>
+              <td style="padding: 10px;"><span style="color: #198754;">✓ Confirmed</span></td>
+            </tr>
+          `,
+            )
+            .join('')}
+        </table>
+
+        ${
+          cancelledBookings.length > 0
+            ? `
+        <h3 style="margin-top: 30px;">Cancelled Bookings (${cancelledBookings.length})</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="background-color: #e9ecef;">
+            <th style="padding: 10px; text-align: left;">Event</th>
+            <th style="padding: 10px; text-align: left;">Date</th>
+          </tr>
+          ${cancelledBookings
+            .map(
+              (b) => `
+            <tr style="border-bottom: 1px solid #dee2e6;">
+              <td style="padding: 10px;">${b.eventTitle}</td>
+              <td style="padding: 10px;">${formatDateForEmail(b.eventStartTime)}</td>
+            </tr>
+          `,
+            )
+            .join('')}
+        </table>
+        `
+            : ''
+        }
+      `
+      }
+
+      const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #198754; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background-color: #f8f9fa; }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #6c757d; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h2>Your Booking Summary</h2>
+            </div>
+            <div class="content">
+              <p>Hello ${userName},</p>
+              <p>Here is your complete booking history:</p>
+              ${bookingsHtml}
+            </div>
+            <div class="footer">
+              <p>Generated on ${new Date().toLocaleString('en-AU')}</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+
+      await sendEmail({
+        to: userEmail,
+        subject: 'Your Booking Summary - ITO5032 Web',
+        html: emailHtml,
+        apiKey: sendgridApiKey.value(),
+        fromEmail: sendgridFromEmail.value(),
+      })
+
+      logger.info('Booking summary sent', { userId })
+
+      return {
+        success: true,
+        message: `Booking summary sent to ${userEmail}`,
+        bookingsCount: bookings.length,
+      }
+    } catch (error) {
+      logger.error('Send booking summary error', { userId, error: error.message })
+      if (error instanceof HttpsError) {
+        throw error
+      }
+      throw new HttpsError('internal', 'Failed to send booking summary')
+    }
+  },
+)
+
+/**
+ * Cloud Function: Send Donation Summary Email
+ * Sends user their donation history
+ */
+exports.sendDonationSummary = onCall(
+  { secrets: [sendgridApiKey, sendgridFromEmail] },
+  async (request) => {
+    const userId = request.auth?.uid
+
+    if (!userId) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated')
+    }
+
+    const db = admin.firestore()
+
+    try {
+      const userDoc = await db.collection('users').doc(userId).get()
+      const userEmail = request.auth.token.email
+      const userName = userDoc.data()?.displayName || request.auth.token.name || 'User'
+
+      if (!userEmail) {
+        throw new HttpsError('failed-precondition', 'User email not found')
+      }
+
+      // Get all donations for user
+      const donationsSnapshot = await db
+        .collection('donations')
+        .where('userId', '==', userId)
+        .orderBy('createdAt', 'desc')
+        .limit(50)
+        .get()
+
+      const donations = donationsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+
+      const totalDonated = donations.reduce((sum, d) => sum + (d.amount || 0), 0)
+
+      let donationsHtml = '<p>No donations found.</p>'
+
+      if (donations.length > 0) {
+        donationsHtml = `
+        <div style="background-color: #d1e7dd; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+          <h3 style="margin: 0; color: #0f5132;">Total Donated: $${totalDonated.toFixed(2)}</h3>
+          <p style="margin: 5px 0 0 0; color: #0f5132;">Thank you for your ${donations.length} donation(s)!</p>
+        </div>
+
+        <h3>Donation History</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="background-color: #e9ecef;">
+            <th style="padding: 10px; text-align: left;">Date</th>
+            <th style="padding: 10px; text-align: left;">Amount</th>
+            <th style="padding: 10px; text-align: left;">Message</th>
+          </tr>
+          ${donations
+            .map(
+              (d) => `
+            <tr style="border-bottom: 1px solid #dee2e6;">
+              <td style="padding: 10px;">${formatDateForEmail(d.createdAt)}</td>
+              <td style="padding: 10px; font-weight: bold;">$${d.amount.toFixed(2)}</td>
+              <td style="padding: 10px;">${d.message || '-'}</td>
+            </tr>
+          `,
+            )
+            .join('')}
+        </table>
+      `
+      }
+
+      const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #198754; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background-color: #f8f9fa; }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #6c757d; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h2>Your Donation Summary</h2>
+            </div>
+            <div class="content">
+              <p>Hello ${userName},</p>
+              <p>Here is your complete donation history:</p>
+              ${donationsHtml}
+            </div>
+            <div class="footer">
+              <p>Generated on ${new Date().toLocaleString('en-AU')}</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+
+      await sendEmail({
+        to: userEmail,
+        subject: 'Your Donation Summary - ITO5032 Web',
+        html: emailHtml,
+        apiKey: sendgridApiKey.value(),
+        fromEmail: sendgridFromEmail.value(),
+      })
+
+      logger.info('Donation summary sent', { userId, totalDonated })
+
+      return {
+        success: true,
+        message: `Donation summary sent to ${userEmail}`,
+        donationsCount: donations.length,
+        totalDonated,
+      }
+    } catch (error) {
+      logger.error('Send donation summary error', { userId, error: error.message })
+      if (error instanceof HttpsError) {
+        throw error
+      }
+      throw new HttpsError('internal', 'Failed to send donation summary')
+    }
+  },
+)
+
+/**
+ * Cloud Function: Send Upcoming Events Email
+ * Sends user their upcoming event bookings
+ */
+exports.sendUpcomingEvents = onCall(
+  { secrets: [sendgridApiKey, sendgridFromEmail] },
+  async (request) => {
+    const userId = request.auth?.uid
+
+    if (!userId) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated')
+    }
+
+    const db = admin.firestore()
+
+    try {
+      const userDoc = await db.collection('users').doc(userId).get()
+      const userEmail = request.auth.token.email
+      const userName = userDoc.data()?.displayName || request.auth.token.name || 'User'
+
+      if (!userEmail) {
+        throw new HttpsError('failed-precondition', 'User email not found')
+      }
+
+      const now = new Date()
+
+      // Get upcoming confirmed bookings
+      const bookingsSnapshot = await db
+        .collection('bookings')
+        .where('userId', '==', userId)
+        .where('status', '==', 'confirmed')
+        .where('eventStartTime', '>', now)
+        .orderBy('eventStartTime', 'asc')
+        .get()
+
+      const upcomingBookings = bookingsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+
+      let eventsHtml = '<p>You have no upcoming events.</p>'
+
+      if (upcomingBookings.length > 0) {
+        eventsHtml = `
+        <div style="background-color: #cfe2ff; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+          <h3 style="margin: 0; color: #084298;">You have ${upcomingBookings.length} upcoming event(s)</h3>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="background-color: #e9ecef;">
+            <th style="padding: 10px; text-align: left;">Event</th>
+            <th style="padding: 10px; text-align: left;">Date & Time</th>
+            <th style="padding: 10px; text-align: left;">Notes</th>
+          </tr>
+          ${upcomingBookings
+            .map(
+              (b) => `
+            <tr style="border-bottom: 1px solid #dee2e6;">
+              <td style="padding: 10px; font-weight: bold;">${b.eventTitle}</td>
+              <td style="padding: 10px;">${formatDateForEmail(b.eventStartTime)}</td>
+              <td style="padding: 10px;">${b.userNotes || '-'}</td>
+            </tr>
+          `,
+            )
+            .join('')}
+        </table>
+      `
+      }
+
+      const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #198754; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background-color: #f8f9fa; }
+            .footer { text-align: center; padding: 20px; font-size: 12px; color: #6c757d; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h2>Your Upcoming Events</h2>
+            </div>
+            <div class="content">
+              <p>Hello ${userName},</p>
+              <p>Here are your upcoming volunteer events:</p>
+              ${eventsHtml}
+            </div>
+            <div class="footer">
+              <p>Generated on ${new Date().toLocaleString('en-AU')}</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `
+
+      await sendEmail({
+        to: userEmail,
+        subject: 'Your Upcoming Events - ITO5032 Web',
+        html: emailHtml,
+        apiKey: sendgridApiKey.value(),
+        fromEmail: sendgridFromEmail.value(),
+      })
+
+      logger.info('Upcoming events sent', { userId, count: upcomingBookings.length })
+
+      return {
+        success: true,
+        message: `Upcoming events sent to ${userEmail}`,
+        eventsCount: upcomingBookings.length,
+      }
+    } catch (error) {
+      logger.error('Send upcoming events error', { userId, error: error.message })
+      if (error instanceof HttpsError) {
+        throw error
+      }
+      throw new HttpsError('internal', 'Failed to send upcoming events')
+    }
+  },
+)
