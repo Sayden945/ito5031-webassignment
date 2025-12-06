@@ -390,7 +390,7 @@ const handleSignOut = async () => {
   animation: fadeIn 0.3s ease-in;
 }
 
-.btn-gradient {
+.btn-grgadient {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
   color: white;
