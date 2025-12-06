@@ -113,7 +113,8 @@ export const sendDonationSummaryEmail = async () => {
   } catch (error) {
     console.error('Cloud Function error:', error)
     // Extract actual error message from Firebase error
-    const errorMessage = error.details?.message || error.message || 'Failed to send donation summary'
+    const errorMessage =
+      error.details?.message || error.message || 'Failed to send donation summary'
     throw new Error(errorMessage)
   }
 }
