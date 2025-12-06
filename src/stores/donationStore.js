@@ -62,7 +62,7 @@ export const useDonationStore = defineStore('donation', () => {
   }
 
   // Add new donation
-  const addDonation = async (amount, message = '', isAnonymous = false) => {
+  const addDonation = async (amount) => {
     if (!userStore.user) {
       throw new Error('User must be logged in to donate')
     }
@@ -77,13 +77,10 @@ export const useDonationStore = defineStore('donation', () => {
     try {
       const donationData = {
         userId: userStore.user.uid,
-        userEmail: isAnonymous ? 'anonymous' : userStore.user.email,
-        userDisplayName: isAnonymous
-          ? 'Anonymous'
-          : userStore.userProfile?.displayName || userStore.user.displayName || 'Anonymous',
+        userEmail: userStore.user.email,
+        userFirstName:
+          userStore.userProfile?.firstName || userStore.user.displayName?.split(' ')[0] || 'User',
         amount: parseFloat(amount),
-        message: message.trim(),
-        isAnonymous,
         status: 'completed',
         createdAt: serverTimestamp(),
       }

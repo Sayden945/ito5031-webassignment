@@ -60,14 +60,14 @@
               </router-link>
             </div>
 
-            <div v-else-if="bookingStore.userBookings.length === 0" class="text-center text-muted">
+            <div v-else-if="activeUserBookings.length === 0" class="text-center text-muted">
               <i class="bi bi-calendar-x display-6 mb-3"></i>
               <p>No bookings yet</p>
             </div>
 
             <div v-else>
               <div
-                v-for="booking in bookingStore.userBookings"
+                v-for="booking in activeUserBookings"
                 :key="booking.id"
                 class="border rounded p-3 mb-2"
               >
@@ -237,6 +237,11 @@ const fullCalendar = ref(null)
 const eventModal = ref(null)
 const selectedEvent = ref(null)
 const bookingNotes = ref('')
+
+// Filter out cancelled bookings
+const activeUserBookings = computed(() =>
+  bookingStore.userBookings.filter((booking) => booking.status !== 'cancelled'),
+)
 
 // Calendar configuration
 const calendarOptions = computed(() => ({

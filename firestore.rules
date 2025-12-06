@@ -14,6 +14,12 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    // Helper function to check if user is advocate
+    function isAdvocate() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'advocate';
+    }
+
     // Users collection - users can read/write their own data, admins can read all
     match /users/{userId} {
       allow read: if isAuthenticated();
@@ -24,24 +30,41 @@ service cloud.firestore {
     // Donations collection - users can read their own, create new, admins can read all
     match /donations/{donationId} {
       allow read: if isAuthenticated() && 
-                  (resource.data.userId == request.auth.uid || 
-                   resource.data.isAnonymous == false ||
-                   isAdmin());
+                  (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && 
-                    request.resource.data.userId == request.auth.uid;
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.amount is number &&
+                    request.resource.data.amount > 0 &&
+                    request.resource.data.amount <= 100000;
     }
 
-    // Articles collection - anyone can read published, admins can read all
+    // Articles collection - anyone can read published, admins and advocates can CRUD all
     match /articles/{articleId} {
-      allow get: if resource.data.published == true || isAdmin();
-      allow list: if true; // Allow listing, filtering handled by query
-      allow write: if isAdmin();
+      allow get: if resource.data.get('published', false) == true || isAdmin() || isAdvocate();
+      allow list: if resource == null || resource.data.get('published', false) == true || isAdmin() || isAdvocate();
+      allow create, update, delete: if isAdmin() || isAdvocate();
     }
 
-    // Events collection - anyone can read, admins can write
+    // Article Ratings collection - authenticated users can rate, anyone can read
+    match /articleRatings/{ratingId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && 
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.rating >= 1 &&
+                    request.resource.data.rating <= 5;
+      allow update, delete: if isAuthenticated() && 
+                            resource.data.userId == request.auth.uid;
+    }
+
+    // Events collection - anyone can read, admins have full CRUD, authenticated users can update spots (for bookings)
     match /volunteerEvents/{eventId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || 
+                    (isAuthenticated() && 
+                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['spotsBooked', 'spotsAvailable', 'updatedAt']) &&
+                     request.resource.data.spotsBooked >= 0 &&
+                     request.resource.data.spotsAvailable >= 0);
     }
 
     // Bookings collection - users can read/create their own, admins can read all
@@ -49,7 +72,11 @@ service cloud.firestore {
       allow read: if isAuthenticated() && 
                   (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isAuthenticated() && 
-                    request.resource.data.userId == request.auth.uid;
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.status == 'confirmed';
+      allow update: if isAuthenticated() && 
+                    (resource.data.userId == request.auth.uid || isAdmin()) &&
+                    (request.resource.data.status in ['confirmed', 'cancelled']);
       allow delete: if isAuthenticated() && 
                     (resource.data.userId == request.auth.uid || isAdmin());
     }

@@ -90,6 +90,9 @@ export const useBookingStore = defineStore('booking', () => {
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate(),
         eventDate: doc.data().eventDate?.toDate?.() || new Date(doc.data().eventDate),
+        eventStartTime:
+          doc.data().eventStartTime?.toDate?.() || new Date(doc.data().eventStartTime),
+        eventEndTime: doc.data().eventEndTime?.toDate?.() || new Date(doc.data().eventEndTime),
       }))
     } catch (err) {
       error.value = `Failed to fetch bookings: ${err.message}`
@@ -138,9 +141,12 @@ export const useBookingStore = defineStore('booking', () => {
     }
 
     try {
-      // Check if user already has booking for this event
+      // Check if user already has an active (confirmed) booking for this event
       const existingBooking = bookings.value.find(
-        (booking) => booking.eventId === eventId && booking.userId === userStore.user.uid,
+        (booking) =>
+          booking.eventId === eventId &&
+          booking.userId === userStore.user.uid &&
+          booking.status === 'confirmed',
       )
 
       if (existingBooking) {
@@ -153,8 +159,10 @@ export const useBookingStore = defineStore('booking', () => {
         throw new Error('No spots available for this event')
       }
 
-      // Check for time conflicts
+      // Check for time conflicts (only with confirmed bookings)
       const conflictingBooking = userBookings.value.find((booking) => {
+        if (booking.status !== 'confirmed') return false
+
         const bookingEvent = events.value.find((e) => e.id === booking.eventId)
         if (!bookingEvent) return false
 
@@ -177,6 +185,8 @@ export const useBookingStore = defineStore('booking', () => {
         userDisplayName: userStore.userProfile?.displayName || userStore.user.displayName,
         eventTitle: event.title,
         eventDate: event.start,
+        eventStartTime: event.start,
+        eventEndTime: event.end,
         userNotes,
         status: 'confirmed',
         createdAt: serverTimestamp(),
@@ -198,6 +208,8 @@ export const useBookingStore = defineStore('booking', () => {
         ...bookingData,
         createdAt: new Date(),
         eventDate: event.start,
+        eventStartTime: event.start,
+        eventEndTime: event.end,
       }
       bookings.value.push(newBooking)
 
@@ -221,8 +233,12 @@ export const useBookingStore = defineStore('booking', () => {
         throw new Error('Booking not found')
       }
 
-      // Delete booking
-      await deleteDoc(doc(db, 'bookings', bookingId))
+      // Update booking status to cancelled instead of deleting
+      const bookingRef = doc(db, 'bookings', bookingId)
+      await updateDoc(bookingRef, {
+        status: 'cancelled',
+        cancelledAt: serverTimestamp(),
+      })
 
       // Update event spots
       const eventRef = doc(db, 'volunteerEvents', booking.eventId)
@@ -242,10 +258,92 @@ export const useBookingStore = defineStore('booking', () => {
         }
       }
 
-      // Remove from local state
-      bookings.value = bookings.value.filter((b) => b.id !== bookingId)
+      // Update booking status in local state
+      const bookingIndex = bookings.value.findIndex((b) => b.id === bookingId)
+      if (bookingIndex !== -1) {
+        bookings.value[bookingIndex].status = 'cancelled'
+        bookings.value[bookingIndex].cancelledAt = new Date()
+      }
     } catch (err) {
       error.value = `Failed to cancel booking: ${err.message}`
+      throw err
+    }
+  }
+
+  const updateEvent = async (eventId, updates) => {
+    try {
+      const eventRef = doc(db, 'volunteerEvents', eventId)
+      await updateDoc(eventRef, {
+        ...updates,
+        updatedAt: serverTimestamp(),
+      })
+
+      const index = events.value.findIndex((event) => event.id === eventId)
+      if (index !== -1) {
+        events.value[index] = {
+          ...events.value[index],
+          ...updates,
+          updatedAt: new Date(),
+        }
+      }
+    } catch (err) {
+      error.value = `Failed to update event: ${err.message}`
+      throw err
+    }
+  }
+
+  const deleteEvent = async (eventId) => {
+    try {
+      // Check if event has any bookings
+      const eventBookings = bookings.value.filter(
+        (b) => b.eventId === eventId && b.status === 'confirmed',
+      )
+      if (eventBookings.length > 0) {
+        throw new Error(
+          'Cannot delete event with active bookings. Please cancel all bookings first.',
+        )
+      }
+
+      await deleteDoc(doc(db, 'volunteerEvents', eventId))
+      events.value = events.value.filter((event) => event.id !== eventId)
+    } catch (err) {
+      error.value = `Failed to delete event: ${err.message}`
+      throw err
+    }
+  }
+
+  const deleteBooking = async (bookingId) => {
+    try {
+      const booking = bookings.value.find((b) => b.id === bookingId)
+      if (!booking) {
+        throw new Error('Booking not found')
+      }
+
+      // Update event spots if booking was confirmed
+      if (booking.status === 'confirmed') {
+        const eventRef = doc(db, 'volunteerEvents', booking.eventId)
+        const event = events.value.find((e) => e.id === booking.eventId)
+        if (event) {
+          await updateDoc(eventRef, {
+            spotsBooked: event.spotsBooked - 1,
+            spotsAvailable: event.spotsAvailable + 1,
+            updatedAt: serverTimestamp(),
+          })
+
+          // Update local state
+          const eventIndex = events.value.findIndex((e) => e.id === booking.eventId)
+          if (eventIndex !== -1) {
+            events.value[eventIndex].spotsBooked -= 1
+            events.value[eventIndex].spotsAvailable += 1
+          }
+        }
+      }
+
+      // Delete booking document
+      await deleteDoc(doc(db, 'bookings', bookingId))
+      bookings.value = bookings.value.filter((b) => b.id !== bookingId)
+    } catch (err) {
+      error.value = `Failed to delete booking: ${err.message}`
       throw err
     }
   }
@@ -264,8 +362,11 @@ export const useBookingStore = defineStore('booking', () => {
     fetchEvents,
     fetchBookings,
     createEvent,
+    updateEvent,
+    deleteEvent,
     bookEvent,
     cancelBooking,
+    deleteBooking,
     clearError,
   }
 })

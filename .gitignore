@@ -34,5 +34,23 @@ coverage
 
 # Vitest
 __screenshots__/
+
+# Firebase
+.firebase/
+*-debug.log
+firebase-debug*.log
+ui-debug.log
+firestore-debug.log
+database-debug.log
+pubsub-debug.log
+.runtimeconfig.json
+
+# Firebase Emulators
+firestore_export/
+firebase-export*/
+emulator-data/
+*.cache
+
+# Project specific
 .github/copilot-instructions.md
 src/firebase/seedData.js

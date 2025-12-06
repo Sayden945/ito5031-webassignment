@@ -29,27 +29,6 @@
                 />
               </div>
 
-              <div class="mb-3">
-                <label for="message" class="form-label">Message (optional)</label>
-                <textarea
-                  id="message"
-                  v-model="message"
-                  class="form-control"
-                  rows="3"
-                  placeholder="Leave a message with your donation"
-                ></textarea>
-              </div>
-
-              <div class="mb-3 form-check">
-                <input
-                  type="checkbox"
-                  id="anonymous"
-                  v-model="isAnonymous"
-                  class="form-check-input"
-                />
-                <label for="anonymous" class="form-check-label">Make donation anonymous</label>
-              </div>
-
               <!-- Error message -->
               <div v-if="donationStore.error" class="alert alert-danger">
                 {{ donationStore.error }}
@@ -111,8 +90,6 @@ const userStore = useUserStore()
 const donationStore = useDonationStore()
 
 const amount = ref(null)
-const message = ref('')
-const isAnonymous = ref(false)
 const successMessage = ref('')
 
 onMounted(async () => {
@@ -126,13 +103,11 @@ async function handleDonation() {
   donationStore.clearError()
 
   try {
-    await donationStore.addDonation(amount.value, message.value, isAnonymous.value)
+    await donationStore.addDonation(amount.value)
     successMessage.value = `Thank you for your donation of $${amount.value.toFixed(2)}!`
 
     // Reset form
     amount.value = null
-    message.value = ''
-    isAnonymous.value = false
   } catch (err) {
     console.error('Donation failed:', err)
   }

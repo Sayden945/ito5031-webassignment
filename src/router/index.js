@@ -23,7 +23,7 @@ const routes = [
     path: '/admin',
     name: 'admin',
     component: AdminView,
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: { requiresAuth: true, requiresAdminOrAdvocate: true },
   },
   {
     path: '/about',
@@ -67,6 +67,11 @@ router.beforeEach((to) => {
 
   // Check admin role
   if (to.meta.requiresAdmin && !userStore.isAdmin) {
+    return { name: 'home' }
+  }
+
+  // Check admin or advocate role
+  if (to.meta.requiresAdminOrAdvocate && !userStore.isAdmin && !userStore.isAdvocate) {
     return { name: 'home' }
   }
 })

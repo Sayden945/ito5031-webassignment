@@ -163,10 +163,21 @@ const firebaseRegisterUser = (event) => {
   formData.value.userPassword = event.target.password.value
 
   createUserWithEmailAndPassword(auth, formData.value.userEmail, formData.value.userPassword)
-    .then((userCredential) => {
+    .then(async (userCredential) => {
       const user = userCredential.user
       console.log('Registration successful:', user)
-      userStore.login(user)
+
+      // Pass firstName and lastName to the login function
+      await userStore.login(user)
+
+      // Update user profile with firstName and lastName
+      if (formData.value.userFirstName || formData.value.userLastName) {
+        await userStore.updateUserProfile({
+          firstName: formData.value.userFirstName,
+          lastName: formData.value.userLastName,
+        })
+      }
+
       router.push({ name: 'account' })
     })
     .catch((error) => {

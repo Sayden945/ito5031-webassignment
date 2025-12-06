@@ -7,12 +7,16 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  query,
+  where,
   serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '@/firebase'
+import { useUserStore } from './userStore'
 
 export const useResourcesStore = defineStore('resources', () => {
   const articles = ref([])
+  const ratings = ref([])
   const loading = ref(false)
   const error = ref(null)
 
@@ -37,7 +41,9 @@ export const useResourcesStore = defineStore('resources', () => {
     error.value = null
 
     try {
-      const querySnapshot = await getDocs(collection(db, 'articles'))
+      // Query only published articles to match security rules
+      const articlesQuery = query(collection(db, 'articles'), where('published', '==', true))
+      const querySnapshot = await getDocs(articlesQuery)
 
       articles.value = querySnapshot.docs
         .map((doc) => ({
@@ -46,7 +52,6 @@ export const useResourcesStore = defineStore('resources', () => {
           createdAt: doc.data().createdAt?.toDate?.() || new Date(doc.data().createdAt),
           updatedAt: doc.data().updatedAt?.toDate?.() || new Date(doc.data().updatedAt),
         }))
-        .filter((article) => article.published)
         .sort((a, b) => b.createdAt - a.createdAt)
     } catch (err) {
       error.value = `Failed to fetch articles: ${err.message}`
@@ -139,8 +144,88 @@ export const useResourcesStore = defineStore('resources', () => {
     error.value = null
   }
 
+  // Rating methods
+  const fetchRatings = async (articleId = null) => {
+    try {
+      let ratingsQuery = collection(db, 'articleRatings')
+
+      if (articleId) {
+        ratingsQuery = query(ratingsQuery, where('articleId', '==', articleId))
+      }
+
+      const querySnapshot = await getDocs(ratingsQuery)
+      ratings.value = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+    } catch (err) {
+      console.error('Error fetching ratings:', err)
+    }
+  }
+
+  const getArticleRating = (articleId) => {
+    const articleRatings = ratings.value.filter((r) => r.articleId === articleId)
+    if (articleRatings.length === 0) return { average: 0, count: 0 }
+
+    const sum = articleRatings.reduce((acc, r) => acc + r.rating, 0)
+    return {
+      average: (sum / articleRatings.length).toFixed(1),
+      count: articleRatings.length,
+    }
+  }
+
+  const getUserRating = (articleId, userId) => {
+    return ratings.value.find((r) => r.articleId === articleId && r.userId === userId)
+  }
+
+  const addRating = async (articleId, rating) => {
+    const userStore = useUserStore()
+    if (!userStore.user) throw new Error('Must be logged in to rate')
+
+    try {
+      const userId = userStore.user.uid
+      const existingRating = getUserRating(articleId, userId)
+
+      if (existingRating) {
+        // Update existing rating
+        const ratingRef = doc(db, 'articleRatings', existingRating.id)
+        await updateDoc(ratingRef, {
+          rating,
+          updatedAt: serverTimestamp(),
+        })
+
+        const index = ratings.value.findIndex((r) => r.id === existingRating.id)
+        if (index !== -1) {
+          ratings.value[index] = { ...ratings.value[index], rating, updatedAt: new Date() }
+        }
+      } else {
+        // Create new rating
+        const docRef = await addDoc(collection(db, 'articleRatings'), {
+          articleId,
+          userId,
+          rating,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        })
+
+        ratings.value.push({
+          id: docRef.id,
+          articleId,
+          userId,
+          rating,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+      }
+    } catch (err) {
+      error.value = `Failed to submit rating: ${err.message}`
+      throw err
+    }
+  }
+
   return {
     articles,
+    ratings,
     loading,
     error,
     newsArticles,
@@ -153,5 +238,9 @@ export const useResourcesStore = defineStore('resources', () => {
     updateArticle,
     deleteArticle,
     clearError,
+    fetchRatings,
+    getArticleRating,
+    getUserRating,
+    addRating,
   }
 })
