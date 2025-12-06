@@ -78,7 +78,9 @@ export const sendBulkEmailFunction = async ({ recipients, subject, message }) =>
     return result.data
   } catch (error) {
     console.error('Cloud Function error:', error)
-    throw new Error(error.message || 'Failed to send bulk email')
+    // Extract actual error message from Firebase error
+    const errorMessage = error.details?.message || error.message || 'Failed to send bulk email'
+    throw new Error(errorMessage)
   }
 }
 
@@ -93,7 +95,9 @@ export const sendBookingSummaryEmail = async () => {
     return result.data
   } catch (error) {
     console.error('Cloud Function error:', error)
-    throw new Error(error.message || 'Failed to send booking summary')
+    // Extract actual error message from Firebase error
+    const errorMessage = error.details?.message || error.message || 'Failed to send booking summary'
+    throw new Error(errorMessage)
   }
 }
 
@@ -108,7 +112,9 @@ export const sendDonationSummaryEmail = async () => {
     return result.data
   } catch (error) {
     console.error('Cloud Function error:', error)
-    throw new Error(error.message || 'Failed to send donation summary')
+    // Extract actual error message from Firebase error
+    const errorMessage = error.details?.message || error.message || 'Failed to send donation summary'
+    throw new Error(errorMessage)
   }
 }
 
@@ -123,6 +129,8 @@ export const sendUpcomingEventsEmail = async () => {
     return result.data
   } catch (error) {
     console.error('Cloud Function error:', error)
-    throw new Error(error.message || 'Failed to send upcoming events')
+    // Extract actual error message from Firebase error
+    const errorMessage = error.details?.message || error.message || 'Failed to send upcoming events'
+    throw new Error(errorMessage)
   }
 }
