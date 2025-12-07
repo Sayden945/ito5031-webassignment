@@ -184,6 +184,7 @@
                       class="btn btn-sm btn-outline-primary"
                       @click="changeUserRole(user)"
                       title="Change Role"
+                      aria-label="Change role for user"
                     >
                       <i class="bi bi-person-gear"></i>
                     </button>
@@ -211,33 +212,50 @@
               <form @submit.prevent="handleAddArticle">
                 <div class="row g-3">
                   <div class="col-md-6">
-                    <label class="form-label">Title</label>
-                    <input v-model="newArticle.title" type="text" class="form-control" required />
+                    <label for="articleTitle" class="form-label">Title</label>
+                    <input
+                      v-model="newArticle.title"
+                      type="text"
+                      class="form-control"
+                      id="articleTitle"
+                      required
+                    />
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label">Type</label>
-                    <select v-model="newArticle.type" class="form-select" required>
+                    <label for="articleType" class="form-label">Type</label>
+                    <select v-model="newArticle.type" class="form-select" id="articleType" required>
                       <option value="news">News</option>
                       <option value="blog">Blog</option>
                       <option value="media">Media</option>
                     </select>
                   </div>
                   <div class="col-12">
-                    <label class="form-label">Description</label>
+                    <label for="articleDescription" class="form-label">Description</label>
                     <textarea
                       v-model="newArticle.description"
                       class="form-control"
+                      id="articleDescription"
                       rows="3"
                       required
                     ></textarea>
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label">Author</label>
-                    <input v-model="newArticle.author" type="text" class="form-control" />
+                    <label for="articleAuthor" class="form-label">Author</label>
+                    <input
+                      v-model="newArticle.author"
+                      type="text"
+                      class="form-control"
+                      id="articleAuthor"
+                    />
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label">Tags (comma-separated)</label>
-                    <input v-model="articleTags" type="text" class="form-control" />
+                    <label for="articleTags" class="form-label">Tags (comma-separated)</label>
+                    <input
+                      v-model="articleTags"
+                      type="text"
+                      class="form-control"
+                      id="articleTags"
+                    />
                   </div>
                   <div class="col-12">
                     <div class="form-check">
@@ -294,6 +312,7 @@
                       class="btn btn-sm btn-outline-primary me-1"
                       @click="editArticle(article)"
                       title="Edit"
+                      aria-label="Edit article"
                     >
                       <i class="bi bi-pencil"></i>
                     </button>
@@ -301,6 +320,7 @@
                       class="btn btn-sm btn-outline-danger"
                       @click="deleteArticle(article.id)"
                       title="Delete"
+                      aria-label="Delete article"
                     >
                       <i class="bi bi-trash"></i>
                     </button>
@@ -390,47 +410,102 @@
               <form @submit.prevent="handleAddEvent">
                 <div class="row g-3">
                   <div class="col-md-6">
-                    <label class="form-label">Title</label>
-                    <input v-model="newEvent.title" type="text" class="form-control" required />
+                    <label for="eventTitle" class="form-label">Title</label>
+                    <input
+                      v-model="newEvent.title"
+                      type="text"
+                      class="form-control"
+                      id="eventTitle"
+                      required
+                    />
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Location</label>
-                    <input v-model="newEvent.location" type="text" class="form-control" required />
+                  <div class="col-md-6 position-relative">
+                    <label for="eventLocation" class="form-label">Location Address</label>
+                    <input
+                      v-model="newEvent.location"
+                      type="text"
+                      class="form-control"
+                      id="eventLocation"
+                      required
+                      placeholder="Start typing address..."
+                      @input="searchAddress($event.target.value, 'new')"
+                      @blur="hideAddressSuggestions('new')"
+                    />
+                    <ul
+                      v-if="addressSuggestions.new.length > 0"
+                      class="address-suggestions list-group position-absolute w-100"
+                      style="z-index: 1000"
+                    >
+                      <li
+                        v-for="suggestion in addressSuggestions.new"
+                        :key="suggestion.id"
+                        class="list-group-item list-group-item-action"
+                        style="cursor: pointer"
+                        @mousedown.prevent="selectAddress(suggestion, 'new')"
+                      >
+                        {{ suggestion.place_name }}
+                      </li>
+                    </ul>
                   </div>
                   <div class="col-12">
-                    <label class="form-label">Description</label>
+                    <label for="eventDescription" class="form-label">Description</label>
                     <textarea
                       v-model="newEvent.description"
                       class="form-control"
+                      id="eventDescription"
                       rows="3"
                       required
                     ></textarea>
                   </div>
                   <div class="col-md-4">
-                    <label class="form-label">Event Date</label>
-                    <input v-model="newEvent.date" type="date" class="form-control" required />
+                    <label for="eventDate" class="form-label">Event Date</label>
+                    <input
+                      v-model="newEvent.date"
+                      type="date"
+                      class="form-control"
+                      id="eventDate"
+                      required
+                    />
                   </div>
                   <div class="col-md-4">
-                    <label class="form-label">Start Time</label>
-                    <input v-model="newEvent.startTime" type="time" class="form-control" required />
+                    <label for="eventStartTime" class="form-label">Start Time</label>
+                    <input
+                      v-model="newEvent.startTime"
+                      type="time"
+                      class="form-control"
+                      id="eventStartTime"
+                      required
+                    />
                   </div>
                   <div class="col-md-4">
-                    <label class="form-label">End Time</label>
-                    <input v-model="newEvent.endTime" type="time" class="form-control" required />
+                    <label for="eventEndTime" class="form-label">End Time</label>
+                    <input
+                      v-model="newEvent.endTime"
+                      type="time"
+                      class="form-control"
+                      id="eventEndTime"
+                      required
+                    />
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label">Total Spots</label>
+                    <label for="eventSpots" class="form-label">Total Spots</label>
                     <input
                       v-model.number="newEvent.spotsTotal"
                       type="number"
                       min="1"
                       class="form-control"
+                      id="eventSpots"
                       required
                     />
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label">Category</label>
-                    <select v-model="newEvent.category" class="form-select" required>
+                    <label for="eventCategory" class="form-label">Category</label>
+                    <select
+                      v-model="newEvent.category"
+                      class="form-select"
+                      id="eventCategory"
+                      required
+                    >
                       <option value="community">Community</option>
                       <option value="fundraising">Fundraising</option>
                       <option value="support">Support</option>
@@ -492,6 +567,7 @@
                       class="btn btn-sm btn-outline-primary me-1"
                       @click="editEvent(event)"
                       title="Edit"
+                      aria-label="Edit event"
                     >
                       <i class="bi bi-pencil"></i>
                     </button>
@@ -499,6 +575,7 @@
                       class="btn btn-sm btn-outline-danger"
                       @click="deleteEvent(event.id)"
                       title="Delete"
+                      aria-label="Delete event"
                     >
                       <i class="bi bi-trash"></i>
                     </button>
@@ -518,14 +595,32 @@
                     <label class="form-label">Title</label>
                     <input v-model="editingEvent.title" type="text" class="form-control" required />
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Location</label>
+                  <div class="col-md-6 position-relative">
+                    <label class="form-label">Location Address</label>
                     <input
                       v-model="editingEvent.location"
                       type="text"
                       class="form-control"
                       required
+                      placeholder="Start typing address..."
+                      @input="searchAddress($event.target.value, 'edit')"
+                      @blur="hideAddressSuggestions('edit')"
                     />
+                    <ul
+                      v-if="addressSuggestions.edit.length > 0"
+                      class="address-suggestions list-group position-absolute w-100"
+                      style="z-index: 1000"
+                    >
+                      <li
+                        v-for="suggestion in addressSuggestions.edit"
+                        :key="suggestion.id"
+                        class="list-group-item list-group-item-action"
+                        style="cursor: pointer"
+                        @mousedown.prevent="selectAddress(suggestion, 'edit')"
+                      >
+                        {{ suggestion.place_name }}
+                      </li>
+                    </ul>
                   </div>
                   <div class="col-12">
                     <label class="form-label">Description</label>
@@ -622,6 +717,7 @@
                       class="btn btn-sm btn-outline-danger"
                       @click="deleteBooking(booking.id)"
                       title="Delete"
+                      aria-label="Delete booking"
                     >
                       <i class="bi bi-trash"></i>
                     </button>
@@ -770,6 +866,10 @@ const editingEvent = ref(null)
 const editEventDate = ref('')
 const editEventStartTime = ref('')
 const editEventEndTime = ref('')
+
+// Address autocomplete state
+const addressSuggestions = ref({ new: [], edit: [] })
+const searchTimeout = ref(null)
 
 // Bulk email state
 const selectedRecipients = ref([])
@@ -923,6 +1023,8 @@ const handleAddEvent = async () => {
       title: newEvent.value.title,
       description: newEvent.value.description,
       location: newEvent.value.location,
+      longitude: newEvent.value.longitude || null,
+      latitude: newEvent.value.latitude || null,
       start: startDate,
       end: endDate,
       spotsTotal: newEvent.value.spotsTotal,
@@ -936,6 +1038,8 @@ const handleAddEvent = async () => {
       title: '',
       description: '',
       location: '',
+      longitude: null,
+      latitude: null,
       date: '',
       startTime: '',
       endTime: '',
@@ -991,6 +1095,8 @@ const handleUpdateEvent = async () => {
       title: editingEvent.value.title,
       description: editingEvent.value.description,
       location: editingEvent.value.location,
+      longitude: editingEvent.value.longitude,
+      latitude: editingEvent.value.latitude,
       start: startDate,
       end: endDate,
       spotsTotal: editingEvent.value.spotsTotal,
@@ -1055,6 +1161,63 @@ const formatDate = (date) => {
     month: 'short',
     day: 'numeric',
   })
+}
+
+// Address autocomplete functions
+const searchAddress = async (query, formType) => {
+  if (!query || query.length < 3) {
+    addressSuggestions.value[formType] = []
+    return
+  }
+
+  // Debounce the search
+  if (searchTimeout.value) {
+    clearTimeout(searchTimeout.value)
+  }
+
+  searchTimeout.value = setTimeout(async () => {
+    try {
+      const accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
+      if (!accessToken || accessToken === 'YOUR_MAPBOX_TOKEN') {
+        console.warn('Mapbox token not configured')
+        return
+      }
+
+      // Search with bias towards Australia
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${accessToken}&country=AU&limit=5`
+
+      const response = await fetch(url)
+      const data = await response.json()
+
+      if (data.features) {
+        addressSuggestions.value[formType] = data.features
+      }
+    } catch (error) {
+      console.error('Error fetching address suggestions:', error)
+    }
+  }, 300)
+}
+
+const selectAddress = (suggestion, formType) => {
+  const [longitude, latitude] = suggestion.center
+
+  if (formType === 'new') {
+    newEvent.value.location = suggestion.place_name
+    newEvent.value.longitude = longitude
+    newEvent.value.latitude = latitude
+  } else if (formType === 'edit') {
+    editingEvent.value.location = suggestion.place_name
+    editingEvent.value.longitude = longitude
+    editingEvent.value.latitude = latitude
+  }
+
+  addressSuggestions.value[formType] = []
+}
+
+const hideAddressSuggestions = (formType) => {
+  setTimeout(() => {
+    addressSuggestions.value[formType] = []
+  }, 200)
 }
 
 // Bulk email functions
@@ -1144,5 +1307,16 @@ onMounted(async () => {
 
 .card:hover {
   transform: translateY(-2px);
+}
+
+.address-suggestions {
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-top: 2px;
+}
+
+.address-suggestions .list-group-item:hover {
+  background-color: #f8f9fa;
 }
 </style>

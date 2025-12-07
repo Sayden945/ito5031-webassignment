@@ -117,6 +117,10 @@
                   <i class="bi bi-calendar me-1"></i>
                   {{ formatEventDate(event.start) }}
                 </p>
+                <p v-if="event.location" class="text-muted mb-2 small">
+                  <i class="bi bi-geo-alt me-1"></i>
+                  {{ event.location }}
+                </p>
                 <p class="text-muted mb-2">
                   <i class="bi bi-people me-1"></i>
                   {{ event.spotsAvailable }} / {{ event.spotsTotal }} spots available
@@ -141,7 +145,12 @@
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">{{ selectedEvent?.title }}</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
           </div>
           <div class="modal-body" v-if="selectedEvent">
             <div class="mb-3">
@@ -263,6 +272,8 @@ const calendarOptions = computed(() => ({
     extendedProps: {
       description: event.description,
       location: event.location,
+      longitude: event.longitude,
+      latitude: event.latitude,
       spotsTotal: event.spotsTotal,
       spotsAvailable: event.spotsAvailable,
       spotsBooked: event.spotsBooked,

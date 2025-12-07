@@ -125,10 +125,7 @@
               </button>
             </h2>
             <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
-              <div class="accordion-body">
-                Yes, we provide comprehensive support to all our customers. Our support team is
-                available during business hours to assist you.
-              </div>
+              <div class="accordion-body">Yes, we provide comprehensive support.</div>
             </div>
           </div>
         </div>

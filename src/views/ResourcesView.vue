@@ -200,7 +200,7 @@
             <p class="lead">{{ selectedArticle.description }}</p>
 
             <div v-if="selectedArticle.content" class="article-content mb-4">
-              <div v-html="selectedArticle.content"></div>
+              <div v-html="sanitizeHtml(selectedArticle.content)"></div>
             </div>
 
             <!-- Rating Section for Blog Articles -->
@@ -305,9 +305,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useResourcesStore } from '@/stores/resourcesStore'
 import { useUserStore } from '@/stores/userStore'
+import { useSanitize } from '@/composables/useSanitize'
 
 const resourcesStore = useResourcesStore()
 const userStore = useUserStore()
+const { sanitizeHtml } = useSanitize()
 const activeFilter = ref('all')
 const hoverRating = ref({})
 const selectedArticle = ref(null)

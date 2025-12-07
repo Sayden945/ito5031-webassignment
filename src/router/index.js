@@ -6,12 +6,18 @@ import ResourcesView from '../views/ResourcesView.vue'
 import AdminView from '../views/AdminView.vue'
 import { useUserStore } from '../stores/userStore'
 import DonateView from '../views/DonateView.vue'
+import BookingLocationsView from '../views/BookingLocationsView.vue'
 
 const routes = [
   {
     path: '/',
     name: 'home',
     component: () => import('../views/HomeView.vue'),
+  },
+  {
+    path: '/locations',
+    name: 'locations',
+    component: BookingLocationsView,
   },
   {
     path: '/account',
@@ -39,11 +45,6 @@ const routes = [
     path: '/resources',
     name: 'resources',
     component: ResourcesView,
-  },
-  {
-    path: '/privacy',
-    name: 'privacy',
-    component: () => import('../views/PrivacyView.vue'),
   },
   {
     path: '/donate',

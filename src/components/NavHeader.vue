@@ -31,6 +31,12 @@
             </router-link>
           </li>
           <li class="nav-item">
+            <router-link to="/locations" class="nav-link" active-class="active">
+              <i class="bi bi-geo-alt me-1"></i>
+              Locations
+            </router-link>
+          </li>
+          <li class="nav-item">
             <router-link to="/donate" class="nav-link" active-class="active">Donate</router-link>
           </li>
           <li v-if="userStore.isAdmin || userStore.isAdvocate" class="nav-item">

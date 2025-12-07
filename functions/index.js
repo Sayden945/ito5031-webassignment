@@ -1,7 +1,6 @@
 /**
  * Firebase Cloud Functions for ITO5032 Web Application
  * Server-side functionality for event booking, donations, and automated tasks
- * NO ANALYTICS INCLUDED
  */
 
 const { setGlobalOptions } = require('firebase-functions/v2')
@@ -24,14 +23,28 @@ setGlobalOptions({ maxInstances: 10 })
 
 /**
  * Sanitize user input to prevent XSS and injection attacks
+ * Uses comprehensive HTML entity encoding and removes dangerous characters
  */
 function sanitizeInput(input, maxLength = 1000) {
   if (typeof input !== 'string') return ''
-  return input
-    .trim()
-    .slice(0, maxLength)
-    .replace(/[<>]/g, '') // Remove HTML tags
-    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+
+  return (
+    input
+      .trim()
+      .slice(0, maxLength)
+      // HTML entity encoding for dangerous characters
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+      .replace(/\//g, '&#x2F;')
+      // Remove control characters
+      .replace(/[\x00-\x1F\x7F]/g, '')
+      // Remove potential script injection patterns
+      .replace(/javascript:/gi, '')
+      .replace(/on\w+\s*=/gi, '')
+  )
 }
 
 /**

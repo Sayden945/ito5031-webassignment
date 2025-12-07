@@ -32,7 +32,7 @@ const validationErrors = ref({
 /* Handles if login or register */
 const isLogin = ref(true)
 
-// Client-side password validation (more reliable than Firebase validatePassword)
+// Client-side password validation
 const validatePasswordClient = (password) => {
   const minLength = 8
   const hasUpperCase = /[A-Z]/.test(password)
@@ -251,9 +251,10 @@ onMounted(() => {
             :class="{ 'is-invalid': validationErrors.email }"
             id="email"
             v-model="formData.userEmail"
+            :aria-describedby="validationErrors.email ? 'emailError' : undefined"
             required
           />
-          <div v-if="validationErrors.email" class="invalid-feedback">
+          <div v-if="validationErrors.email" class="invalid-feedback" id="emailError">
             {{ validationErrors.email }}
           </div>
         </div>
@@ -268,9 +269,10 @@ onMounted(() => {
             id="password"
             v-model="formData.userPassword"
             @input="!isLogin && validatePasswordRealTime()"
+            :aria-describedby="validationErrors.password ? 'passwordError' : undefined"
             required
           />
-          <div v-if="validationErrors.password" class="invalid-feedback">
+          <div v-if="validationErrors.password" class="invalid-feedback" id="passwordError">
             {{ validationErrors.password }}
           </div>
 

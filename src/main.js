@@ -4,6 +4,7 @@ import '@/firebase'
 
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-icons/font/bootstrap-icons.css'
+import 'mapbox-gl/dist/mapbox-gl.css'
 import 'bootstrap'
 
 import App from './App.vue'
