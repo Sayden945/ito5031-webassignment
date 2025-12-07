@@ -1,4 +1,4 @@
-<img width="2166" height="1406" alt="image" src="https://github.com/user-attachments/assets/df18f431-7661-4b89-af7e-27b783295a15" /># ITO5032-Web, Ayden Smith
+# ITO5032-Web, Ayden Smith
 
 This template should help get you started developing with Vue 3 in Vite.
 Recording at youtube link: https://www.youtube.com/watch?v=rTIEUBi0Sdc
